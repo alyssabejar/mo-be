@@ -1,0 +1,124 @@
+# Local stack: Postgres, NATS JetStream, Traefik and the seven services.
+#   docker compose -f infra/docker-compose.yml up --build
+#   API_URL=http://localhost:8080/api pnpm seed
+name: mamamo
+
+x-service: &service
+  build:
+    context: ..
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  depends_on:
+    postgres: { condition: service_healthy }
+    nats: { condition: service_started }
+  environment: &env
+    PORT: "4000"
+    NATS_URL: nats://nats:4222
+    JWKS_URL: http://identity:4000/auth/jwks
+    BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me-in-.env-at-least-32-characters}
+    LOG_LEVEL: info
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      retries: 20
+
+  nats:
+    image: nats:2.10
+    command: ["-js", "-sd", "/data"]
+    ports: ["4222:4222"]
+    volumes: [natsdata:/data]
+
+  traefik:
+    image: traefik:v3.2
+    command:
+      - --entrypoints.web.address=:8080
+      - --providers.file.filename=/etc/traefik/dynamic.yml
+    ports: ["8080:8080"]
+    volumes: [./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro]
+
+  identity:
+    <<: *service
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args: { SERVICE: identity }
+    environment:
+      <<: *env
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/mamamo_identity
+
+  meal:
+    <<: *service
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args: { SERVICE: meal }
+    environment:
+      <<: *env
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/mamamo_meal
+
+  errand:
+    <<: *service
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args: { SERVICE: errand }
+    environment:
+      <<: *env
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/mamamo_errand
+
+  staff:
+    <<: *service
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args: { SERVICE: staff }
+    environment:
+      <<: *env
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/mamamo_staff
+
+  reminder:
+    <<: *service
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args: { SERVICE: reminder }
+    environment:
+      <<: *env
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/mamamo_reminder
+      COURIER_WEBHOOK_SECRET: ${COURIER_WEBHOOK_SECRET:-}
+
+  notification:
+    <<: *service
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args: { SERVICE: notification }
+    environment:
+      <<: *env
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/mamamo_notification
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+
+  calendar:
+    <<: *service
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args: { SERVICE: calendar }
+    environment:
+      <<: *env
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/mamamo_calendar
+
+volumes:
+  pgdata:
+  natsdata:

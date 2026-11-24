@@ -1,0 +1,8 @@
+packages:
+  - "services/*"
+  - "packages/*"
+
+onlyBuiltDependencies:
+  - esbuild
+overrides:
+  "better-call>zod": "^4.5.4"

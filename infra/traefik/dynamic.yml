@@ -1,0 +1,81 @@
+# Traefik routes for local docker compose: /api/<service>/… → <service>:4000/…
+http:
+  middlewares:
+    strip-api:
+      stripPrefixRegex:
+        regex:
+          - "^/api/[a-z]+"
+    cors:
+      headers:
+        accessControlAllowOriginList:
+          - "http://localhost:5173"
+          - "http://127.0.0.1:5173"
+        accessControlAllowMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+        accessControlAllowHeaders: [authorization, content-type]
+        accessControlAllowCredentials: true
+        accessControlMaxAge: 600
+  routers:
+    identity:
+      rule: "PathPrefix(`/api/identity`)"
+      entryPoints: [web]
+      middlewares: [cors, strip-api]
+      service: identity
+    meal:
+      rule: "PathPrefix(`/api/meal`)"
+      entryPoints: [web]
+      middlewares: [cors, strip-api]
+      service: meal
+    errand:
+      rule: "PathPrefix(`/api/errand`)"
+      entryPoints: [web]
+      middlewares: [cors, strip-api]
+      service: errand
+    staff:
+      rule: "PathPrefix(`/api/staff`)"
+      entryPoints: [web]
+      middlewares: [cors, strip-api]
+      service: staff
+    reminder:
+      rule: "PathPrefix(`/api/reminder`)"
+      entryPoints: [web]
+      middlewares: [cors, strip-api]
+      service: reminder
+    notification:
+      rule: "PathPrefix(`/api/notification`)"
+      entryPoints: [web]
+      middlewares: [cors, strip-api]
+      service: notification
+    calendar:
+      rule: "PathPrefix(`/api/calendar`)"
+      entryPoints: [web]
+      middlewares: [cors, strip-api]
+      service: calendar
+  services:
+    identity:
+      loadBalancer:
+        servers:
+          - url: "http://identity:4000"
+    meal:
+      loadBalancer:
+        servers:
+          - url: "http://meal:4000"
+    errand:
+      loadBalancer:
+        servers:
+          - url: "http://errand:4000"
+    staff:
+      loadBalancer:
+        servers:
+          - url: "http://staff:4000"
+    reminder:
+      loadBalancer:
+        servers:
+          - url: "http://reminder:4000"
+    notification:
+      loadBalancer:
+        servers:
+          - url: "http://notification:4000"
+    calendar:
+      loadBalancer:
+        servers:
+          - url: "http://calendar:4000"
